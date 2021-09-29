@@ -1,24 +1,44 @@
 const express = require('express')
 const cors = require('cors')
-const categories = require('./data/category.json')
-const products = require('./data/product.json')
-const categoryQueue = require('./queue/category')
-const productQueue = require('./queue/product')
-
+const axios = require('axios')
+const amqp = require('amqplib')
 const app = express()
 app.use(cors())
+app.use(express.json())
+var channel, connection;
 
-app.get('/categories', async (req, res) => {
-  res.json(categories)
+const getProducts = async () => {
+  return axios.get('https://fakestoreapi.com/products')
+    .catch((err) => { return err })
+}
+
+const connect = async () => {
+  connection = await amqp.connect("amqp://localhost:5672")
+  channel = await connection.createChannel()
+  await channel.assertQueue("PRODUCT", { durable: false })
+  await channel.assertQueue("PRODUCT_LIST", { durable: false })
+}
+
+connect().then(() => {
+  channel.consume("PRODUCT", async (data) => {
+    channel.ack(data)
+    const products = await getProducts()
+    channel.sendToQueue(
+      "PRODUCT_LIST",
+      Buffer.from(JSON.stringify(products.data))
+    )
+  })
+}).catch((err) => {
+  console.log(err);
 })
 
-app.get('/products', async (req, res) => {
+app.get('/products', (req, res) => {
+  let products = []
+  channel.sendToQueue("PRODUCT", "All")
+
   res.json(products)
 })
 
 app.listen(3001, () => {
-  console.log('main server running');
+  console.log('product service running...');
 })
-
-categoryQueue()
-productQueue()

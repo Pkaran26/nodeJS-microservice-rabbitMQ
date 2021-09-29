@@ -1,23 +1,30 @@
 const express = require('express')
 const cors = require('cors')
-const sendToQueue = require('./publisher')
-
+const amqp = require('amqplib')
 const app = express()
 app.use(cors())
+app.use(express.json())
+var channel, connection;
 
-app.get('/category/:category', async (req, res) => {
-  await sendToQueue("category", JSON.stringify({ category: req.params.category }))
-  res.json({ 'message': 'category will be created' })
-})
+const connect = async () => {
+  connection = await amqp.connect("amqp://localhost:5672")
+  channel = await connection.createChannel()
+  await channel.assertQueue("PRODUCT", { durable: false })
+  await channel.assertQueue("PRODUCT_LIST", { durable: false })
+}
+connect()
 
-app.get('/product/:product/:category/:quantity/:price', async (req, res) => {
-  const { product, category, quantity, price } = req.params
-  await sendToQueue("product", JSON.stringify({
-    product, category, quantity, price
-  }))
-  res.json({ 'message': 'product will be created' })
+app.get('/products', (req, res) => {
+  let products = []
+  channel.sendToQueue("PRODUCT", Buffer.from("All"))
+  channel.consume("PRODUCT_LIST", (data) => {
+    products = data.content.toString()
+    res.json(JSON.parse(products))
+    channel.ack(data)
+  })
+
 })
 
 app.listen(3000, () => {
-  console.log('main server running');
+  console.log('main service running...');
 })
