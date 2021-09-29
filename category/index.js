@@ -15,7 +15,6 @@ app.listen(3001, () => {
   console.log('main server running');
 })
 
-
 const addCategory = async (payload) => {
   payload = JSON.parse(payload)
   return await readFile(payload.category)
