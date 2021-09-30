@@ -2,6 +2,7 @@ const express = require('express')
 const cors = require('cors')
 const axios = require('axios')
 const amqp = require('amqplib')
+// const products = require('./products.json')
 const app = express()
 app.use(cors())
 app.use(express.json())
@@ -15,18 +16,20 @@ const getProducts = async () => {
 const connect = async () => {
   connection = await amqp.connect("amqp://localhost:5672")
   channel = await connection.createChannel()
-  await channel.assertQueue("PRODUCT", { durable: false })
-  // await channel.assertQueue("PRODUCT_LIST", { durable: false })
+  await channel.assertQueue("PRODUCT")
+  await channel.assertQueue("PRODUCT_LIST")
 }
 
 connect().then(() => {
   channel.consume("PRODUCT", async (data) => {
-    channel.ack(data)
+    console.log(data.content.toString());
     const products = await getProducts()
     channel.sendToQueue(
       "PRODUCT_LIST",
       Buffer.from(JSON.stringify(products.data))
     )
+    console.log('sent');
+    channel.ack(data)
   })
 }).catch((err) => {
   console.log(err);
