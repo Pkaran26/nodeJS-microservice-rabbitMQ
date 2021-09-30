@@ -21,7 +21,6 @@ connect().then(() => {
   channel.consume("PRODUCT_LIST", (data) => {
     let products = data.content.toString()
     products = JSON.parse(products)
-    console.log(products.length)
     eventEmitter.emit('CONSUMED_PRODUCT', products);
     channel.ack(data)
   })

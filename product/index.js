@@ -22,13 +22,11 @@ const connect = async () => {
 
 connect().then(() => {
   channel.consume("PRODUCT", async (data) => {
-    console.log(data.content.toString());
     const products = await getProducts()
     channel.sendToQueue(
       "PRODUCT_LIST",
       Buffer.from(JSON.stringify(products.data))
     )
-    console.log('sent');
     channel.ack(data)
   })
 }).catch((err) => {
@@ -38,7 +36,6 @@ connect().then(() => {
 app.get('/products', (req, res) => {
   let products = []
   channel.sendToQueue("PRODUCT", "All")
-
   res.json(products)
 })
 
