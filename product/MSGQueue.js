@@ -21,18 +21,27 @@ class MsgQueue {
     connection.close()
   }
 
-  async assertQueue(queue, options = {}) {
-    return await this.channel.assertQueue(queue, options)
+  async assertQueue(queueName = [], options = {}) {
+    return queueName.map(async (e) => {
+      return await this.channel.assertQueue(e, options)
+        .catch((err) => { return err })
+    })
   }
 
   send(queue, payload) {
     this.channel.sendToQueue(queue, Buffer.from(JSON.stringify(payload)))
   }
 
-  consume(queue, emitterName) {
-    this.channel.consume(queue, (data) => {
+  consume(queue, emitterName = null, handler = null, responseQueue = null) {
+    this.channel.consume(queue, async (data) => {
       let payload = JSON.parse(data.content.toString())
-      this.eventEmitter.emit(emitterName, payload);
+      if (handler && responseQueue) {
+        const result = await handler(queue, payload)
+          .catch(err => { return err })
+        this.send(responseQueue, result)
+      } else {
+        this.eventEmitter.emit(emitterName, payload);
+      }
       this.channel.ack(data)
     })
   }

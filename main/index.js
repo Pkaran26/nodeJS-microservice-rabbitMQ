@@ -10,9 +10,9 @@ app.use(express.json())
 
 setTimeout(() => {
   if (msgQueue && msgQueue.channel) {
-    msgQueue.assertQueue("PRODUCT")
-    msgQueue.assertQueue("PRODUCT_LIST")
-    msgQueue.consume("PRODUCT_LIST", "CONSUMED_PRODUCT")
+    msgQueue.assertQueue(["PRODUCT", "PRODUCT_DETAIL", "PRODUCT_LIST", "PRODUCT_DETAIL_OBJ"])
+    msgQueue.consume("PRODUCT_LIST", "CONSUMED_PRODUCT", null, null)
+    msgQueue.consume("PRODUCT_DETAIL_OBJ", "CONSUMED_PRODUCT_DETAIL", null, null)
   }
 }, 1000)
 
@@ -22,7 +22,18 @@ app.get('/products', async (req, res) => {
     const data = await msgQueue.emitListener("CONSUMED_PRODUCT")
     return res.json(data)
   } else {
-    res.json({ error: 'queue no ready' })
+    res.json({ error: 'queue does not ready' })
+  }
+})
+
+app.get('/products/:id', async (req, res) => {
+  if (msgQueue && msgQueue.channel) {
+
+    msgQueue.send("PRODUCT_DETAIL", { id: req.params.id })
+    const data = await msgQueue.emitListener("CONSUMED_PRODUCT_DETAIL")
+    return res.json(data)
+  } else {
+    res.json({ error: 'queue does not ready' })
   }
 })
 

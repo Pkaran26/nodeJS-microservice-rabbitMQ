@@ -1,8 +1,7 @@
 const express = require('express')
 const cors = require('cors')
-const axios = require('axios')
 const MsgQueue = require('./MSGQueue')
-// const products = require('./products.json')
+const productHandler = require('./product')
 
 const app = express()
 const msgQueue = new MsgQueue()
@@ -12,25 +11,11 @@ app.use(express.json())
 
 setTimeout(() => {
   if (msgQueue && msgQueue.channel) {
-    msgQueue.assertQueue("PRODUCT")
-    msgQueue.assertQueue("PRODUCT_LIST")
-
-    msgQueue.channel.consume("PRODUCT", async (data) => {
-      const products = await getProducts()
-      msgQueue.channel.sendToQueue(
-        "PRODUCT_LIST",
-        Buffer.from(JSON.stringify(products.data))
-      )
-      msgQueue.channel.ack(data)
-    })
+    msgQueue.assertQueue(["PRODUCT", "PRODUCT_DETAIL", "PRODUCT_LIST", "PRODUCT_DETAIL_OBJ"])
+    msgQueue.consume("PRODUCT", null, productHandler, "PRODUCT_LIST")
+    msgQueue.consume("PRODUCT_DETAIL", null, productHandler, "PRODUCT_DETAIL_OBJ")
   }
 }, 1000)
-
-const getProducts = async () => {
-  return axios.get('https://fakestoreapi.com/products')
-    .catch((err) => { return err })
-}
-
 
 app.listen(3001, () => {
   console.log('product service running...');
